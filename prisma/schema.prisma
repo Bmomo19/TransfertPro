@@ -1,0 +1,325 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── TENANT (structure de transfert) ─────────────────────────────────
+model Tenant {
+  id             String        @id @default(cuid())
+  slug           String        @unique
+  name           String
+  colorPrimary   String        @default("#F97316")
+  colorSecondary String        @default("#FFF7ED")
+  logo           String?
+  plan           Plan          @default(STARTER)
+  planExpiresAt  DateTime?
+  isActive       Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  users                User[]
+  agents               Agent[]
+  saisies              Saisie[]
+  auditLogs            AuditLog[]
+  reseaux              TenantReseau[]
+  thresholds           Threshold[]
+  commissionRetraits   CommissionRetrait[]
+  creances             Creance[]
+
+  @@map("tenants")
+}
+
+// ─── USER (superadmin / responsable) ─────────────────────────────────
+model User {
+  id            String    @id @default(cuid())
+  tenantId      String?
+  tenant        Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email         String    @unique
+  name          String
+  pinHash       String
+  role          UserRole  @default(RESPONSABLE)
+  mustChangePin Boolean   @default(true)
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  saisies               Saisie[]
+  auditLogs             AuditLog[]
+  creances              Creance[]
+  remboursementsValides Remboursement[]
+
+  @@map("users")
+}
+
+// ─── AGENT (créé par le responsable) ─────────────────────────────────
+model Agent {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code          String
+  name          String
+  phone         String?
+  pinHash       String
+  role          AgentRole @default(AGENT)
+  mustChangePin Boolean   @default(true)
+  isActive      Boolean   @default(true)
+  createdById   String
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  saisies   Saisie[]
+  auditLogs AuditLog[]
+  creances  Creance[]
+
+  @@unique([tenantId, code])
+  @@map("agents")
+}
+
+// ─── RÉSEAU OPÉRATEUR ────────────────────────────────────────────────
+model TenantReseau {
+  id               String         @id @default(cuid())
+  tenantId         String
+  tenant           Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  code             String
+  nom              String
+  tauxCommission   Decimal        @db.Decimal(6, 4)
+  tauxGateway      Decimal        @db.Decimal(6, 4)
+  isActive         Boolean        @default(true)
+  ordre            Int            @default(0)
+  // Commission agents
+  modeCommission   ModeCommission @default(DIRECT)
+  hasCommissionAgent Boolean      @default(false)
+  commissionLabel  String?        // label affiché dans le formulaire agent
+
+  saisieDetails      SaisieDetail[]
+  thresholds         Threshold[]
+  saisieCommissions  SaisieCommission[]
+  commissionRetraits CommissionRetrait[]
+  creances           Creance[]
+
+  @@unique([tenantId, code])
+  @@map("tenant_reseaux")
+}
+
+// ─── SAISIE JOURNALIÈRE ───────────────────────────────────────────────
+model Saisie {
+  id              String       @id @default(cuid())
+  tenantId        String
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  date            DateTime     @db.Date
+  agentId         String?
+  agent           Agent?       @relation(fields: [agentId], references: [id])
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id])
+  caisse          Decimal      @default(0) @db.Decimal(18, 2)
+  especes         Decimal      @default(0) @db.Decimal(18, 2)
+  transfertResp   Decimal      @default(0) @db.Decimal(18, 2)
+  totalReseaux    Decimal      @default(0) @db.Decimal(18, 2)
+  totalGlobal     Decimal      @default(0) @db.Decimal(18, 2)
+  observation     String?
+  statut          SaisieStatut @default(SOUMIS)
+  validatedById   String?
+  validatedAt     DateTime?
+  montantAttendu  Decimal?     @db.Decimal(18, 2)
+  ecart           Decimal?     @db.Decimal(18, 2)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  details     SaisieDetail[]
+  commissions SaisieCommission[]
+
+  @@unique([tenantId, date, agentId])
+  @@map("saisies")
+}
+
+model SaisieDetail {
+  id        String       @id @default(cuid())
+  saisieId  String
+  saisie    Saisie       @relation(fields: [saisieId], references: [id], onDelete: Cascade)
+  reseauId  String
+  reseau    TenantReseau @relation(fields: [reseauId], references: [id])
+  solde     Decimal      @db.Decimal(18, 2)
+
+  @@unique([saisieId, reseauId])
+  @@map("saisie_details")
+}
+
+model SaisieCommission {
+  id           String        @id @default(cuid())
+  saisieId     String
+  saisie       Saisie        @relation(fields: [saisieId], references: [id], onDelete: Cascade)
+  reseauId     String?
+  reseau       TenantReseau? @relation(fields: [reseauId], references: [id])
+  type         String        // label lisible (nom ou commissionLabel du réseau)
+  montant      Decimal       @db.Decimal(18, 2) // commission du jour (delta pour CUMULATIF)
+  valeurSaisie Decimal?      @db.Decimal(18, 2) // cumul brut entré par l'agent (CUMULATIF only)
+
+  @@map("saisie_commissions")
+}
+
+// ─── RETRAIT COMMISSION CUMULATIF ─────────────────────────────────────
+model CommissionRetrait {
+  id          String       @id @default(cuid())
+  tenantId    String
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reseauId    String
+  reseau      TenantReseau @relation(fields: [reseauId], references: [id])
+  date        DateTime     @db.Date
+  montant     Decimal      @db.Decimal(18, 2) // montant encaissé lors du retrait
+  note        String?
+  createdById String
+  createdAt   DateTime     @default(now())
+
+  @@index([tenantId, reseauId, date(sort: Desc)])
+  @@map("commission_retraits")
+}
+
+// ─── SEUILS D'ALERTE ─────────────────────────────────────────────────
+model Threshold {
+  id       String       @id @default(cuid())
+  tenantId String
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reseauId String
+  reseau   TenantReseau @relation(fields: [reseauId], references: [id])
+  min      Decimal      @db.Decimal(18, 2)
+  max      Decimal      @db.Decimal(18, 2)
+
+  @@unique([tenantId, reseauId])
+  @@map("thresholds")
+}
+
+// ─── AUDIT TRAIL ─────────────────────────────────────────────────────
+model AuditLog {
+  id        String      @id @default(cuid())
+  tenantId  String?
+  tenant    Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorType ActorType
+  actorId   String
+  actorName String
+  userId    String?
+  user      User?       @relation(fields: [userId], references: [id])
+  agentId   String?
+  agent     Agent?      @relation(fields: [agentId], references: [id])
+  action    AuditAction
+  entity    String
+  entityId  String?
+  oldValue  Json?
+  newValue  Json?
+  metadata  Json?
+  createdAt DateTime    @default(now())
+
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@index([tenantId, actorId])
+  @@map("audit_logs")
+}
+
+// ─── CRÉANCES CLIENT ─────────────────────────────────────────────────
+model Creance {
+  id          String        @id @default(cuid())
+  tenantId    String
+  tenant      Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  agentId     String?
+  agent       Agent?        @relation(fields: [agentId], references: [id])
+  userId      String?
+  user        User?         @relation(fields: [userId], references: [id])
+  reseauId    String?
+  reseau      TenantReseau? @relation(fields: [reseauId], references: [id])
+  clientNom   String
+  clientPhone String?
+  montant     Decimal       @db.Decimal(18, 2)
+  date        DateTime      @db.Date
+  echeance    DateTime?     @db.Date
+  note        String?
+  statut      CreanceStatut @default(EN_COURS)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  remboursements Remboursement[]
+
+  @@index([tenantId, statut])
+  @@index([tenantId, agentId])
+  @@map("creances")
+}
+
+model Remboursement {
+  id            String              @id @default(cuid())
+  creanceId     String
+  creance       Creance             @relation(fields: [creanceId], references: [id], onDelete: Cascade)
+  montant       Decimal             @db.Decimal(18, 2)
+  date          DateTime            @db.Date
+  note          String?
+  statut        RemboursementStatut @default(EN_ATTENTE)
+  validatedById String?
+  validatedBy   User?               @relation(fields: [validatedById], references: [id])
+  validatedAt   DateTime?
+  rejectedNote  String?
+  createdAt     DateTime            @default(now())
+
+  @@index([creanceId])
+  @@map("remboursements")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────
+enum Plan {
+  STARTER
+  STANDARD
+  PREMIUM
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  RESPONSABLE
+}
+
+enum AgentRole {
+  AGENT
+}
+
+enum SaisieStatut {
+  SOUMIS
+  VALIDE
+  REJETE
+  ALERTE_ECART
+}
+
+enum ModeCommission {
+  DIRECT
+  CUMULATIF
+}
+
+enum ActorType {
+  USER
+  AGENT
+  SYSTEM
+}
+
+enum AuditAction {
+  LOGIN
+  LOGOUT
+  PIN_CHANGE
+  CREATE
+  UPDATE
+  DELETE
+  VALIDATE
+  REJECT
+  EXPORT
+  RAPPROCHEMENT
+  RETRAIT_COMMISSION
+}
+
+enum CreanceStatut {
+  EN_COURS
+  REMBOURSE
+  ANNULE
+}
+
+enum RemboursementStatut {
+  EN_ATTENTE
+  VALIDE
+  REJETE
+}
