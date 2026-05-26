@@ -8,11 +8,7 @@ import { cn } from '@/lib/cn'
 type PreselectedTenant = { slug: string; name: string; color: string }
 type Step = 'role' | 'direct' | 'pin'
 
-const FALLBACK_ROLES = [
-  { id: 'hudiphen',   label: 'Hudiphen',      sub: 'Agent ou Responsable',   color: '#F97316' },
-  { id: 'hephed',     label: 'Hephed Finance', sub: 'Agent ou Responsable',   color: '#3B82F6' },
-  { id: 'superadmin', label: 'Super Admin',    sub: 'Administration globale', color: '#059669' },
-]
+const SUPERADMIN_ENTRY = { id: 'superadmin', label: 'Super Admin', sub: 'Administration globale', color: '#059669' }
 
 const KEYS = ['1','2','3','4','5','6','7','8','9','','0','del']
 
@@ -68,7 +64,7 @@ function PinKeypad({ onPress, onDel, pin, disabled }: {
   )
 }
 
-export function LoginClient({ tenant }: { tenant?: PreselectedTenant }) {
+export function LoginClient({ tenant, tenants = [] }: { tenant?: PreselectedTenant; tenants?: { slug: string; name: string; colorPrimary: string }[] }) {
   const router = useRouter()
   const params = useSearchParams()
   const { data: session, status } = useSession()
@@ -140,21 +136,32 @@ export function LoginClient({ tenant }: { tenant?: PreselectedTenant }) {
           <p className="mt-1 text-sm text-white/60">Sélectionnez votre structure</p>
         </div>
         <div className="space-y-3">
-          {FALLBACK_ROLES.map(r => (
-            <button key={r.id} onClick={() => {
-              setTenantSlug(r.id); setTenantName(r.label); setTenantColor(r.color)
+          {tenants.map(r => (
+            <button key={r.slug} onClick={() => {
+              setTenantSlug(r.slug); setTenantName(r.name); setTenantColor(r.colorPrimary)
               setPin(''); setError('')
-              setStep(r.id === 'superadmin' ? 'pin' : 'direct')
+              setStep('direct')
             }} className="w-full flex items-center gap-4 rounded-2xl border border-white/20 bg-white/10 p-4 text-left transition-all hover:bg-white/20 active:scale-98">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white" style={{background: r.color}}>
-                {r.id === 'superadmin' ? '🔐' : r.label.charAt(0)}
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg font-bold text-white" style={{background: r.colorPrimary}}>
+                {r.name.charAt(0)}
               </span>
               <div>
-                <p className="font-semibold text-white">{r.label}</p>
-                <p className="text-xs text-white/60">{r.sub}</p>
+                <p className="font-semibold text-white">{r.name}</p>
+                <p className="text-xs text-white/60">Agent ou Responsable</p>
               </div>
             </button>
           ))}
+          <button onClick={() => {
+            setTenantSlug(SUPERADMIN_ENTRY.id); setTenantName(SUPERADMIN_ENTRY.label); setTenantColor(SUPERADMIN_ENTRY.color)
+            setPin(''); setError('')
+            setStep('pin')
+          }} className="w-full flex items-center gap-4 rounded-2xl border border-white/20 bg-white/10 p-4 text-left transition-all hover:bg-white/20 active:scale-98">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg" style={{background: SUPERADMIN_ENTRY.color}}>🔐</span>
+            <div>
+              <p className="font-semibold text-white">{SUPERADMIN_ENTRY.label}</p>
+              <p className="text-xs text-white/60">{SUPERADMIN_ENTRY.sub}</p>
+            </div>
+          </button>
         </div>
       </div>
     </div>
