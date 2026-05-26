@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Syne, DM_Sans, DM_Mono } from 'next/font/google'
 import { SessionProvider } from '@/components/providers/SessionProvider'
 import { ToastProvider } from '@/components/providers/ToastProvider'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import './globals.css'
 
 const dmSans = DM_Sans({ subsets:['latin'], variable:'--font-sans', weight:['300','400','500','600','700'] })
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: { children:React.ReactNode }) {
         <SessionProvider>
           {children}
           <ToastProvider/>
+          <SpeedInsights/>
         </SessionProvider>
       </body>
     </html>
