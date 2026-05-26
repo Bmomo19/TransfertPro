@@ -13,7 +13,7 @@ const PER = 20
 export default async function CreancesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ statut?: string; page?: string }>
+  searchParams: Promise<{ statut?: string; page?: string; client?: string }>
 }) {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect('/login')
@@ -22,7 +22,7 @@ export default async function CreancesPage({
   const tenant = await getTenantBySlug(slug)
   if (!tenant) redirect('/login')
 
-  const { statut: statutParam, page: pageParam } = await searchParams
+  const { statut: statutParam, page: pageParam, client: clientFilter } = await searchParams
   const page    = Math.max(1, parseInt(pageParam ?? '1'))
   const isAgent = session.user.actorType === 'AGENT'
   const isResp  = ['RESPONSABLE', 'SUPER_ADMIN'].includes(session.user.role)
@@ -36,6 +36,7 @@ export default async function CreancesPage({
     tenantId,
     ...(statutFilter ? { statut: statutFilter } : {}),
     ...(isAgent ? { agentId: session.user.id } : {}),
+    ...(clientFilter ? { clientNom: clientFilter } : {}),
   }
 
   const [creances, total] = await Promise.all([
@@ -52,6 +53,28 @@ export default async function CreancesPage({
     }),
     prisma.creance.count({ where }),
   ])
+
+  // Stats clients — regroupement en JS (évite les limitations du groupBy pg adapter)
+  const allCreancesFlat = await prisma.creance.findMany({
+    where: { tenantId, ...(isAgent ? { agentId: session.user.id } : {}) },
+    select: { clientNom: true, clientPhone: true, montant: true, statut: true, echeance: true },
+  })
+  type ClientStat = { nom: string; phone: string | null; count: number; enCoursCount: number; enCoursMontant: number; hasOverdue: boolean }
+  const clientMap = new Map<string, ClientStat>()
+  for (const c of allCreancesFlat) {
+    const key = c.clientNom.toLowerCase().trim()
+    const s   = clientMap.get(key) ?? { nom: c.clientNom, phone: c.clientPhone ?? null, count: 0, enCoursCount: 0, enCoursMontant: 0, hasOverdue: false }
+    s.count++
+    if (c.statut === 'EN_COURS') {
+      s.enCoursCount++
+      s.enCoursMontant += Number(c.montant)
+      if (c.echeance && new Date(c.echeance) < new Date()) s.hasOverdue = true
+    }
+    clientMap.set(key, s)
+  }
+  const clients = Array.from(clientMap.values())
+    .filter(c => c.count > 0)
+    .sort((a, b) => b.enCoursCount - a.enCoursCount || a.nom.localeCompare(b.nom))
 
   // Stats
   const [statsEnCours, statsPending] = await Promise.all([
@@ -141,6 +164,8 @@ export default async function CreancesPage({
         perPage={PER}
         isResp={isResp}
         reseaux={tenant.reseaux.filter(r => r.isActive).map(r => ({ id: r.id, nom: r.nom }))}
+        clients={clients}
+        clientFilter={clientFilter ?? null}
       />
     </div>
   )

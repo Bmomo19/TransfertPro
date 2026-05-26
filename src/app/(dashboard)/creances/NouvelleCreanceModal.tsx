@@ -6,13 +6,15 @@ import { creerCreance } from '@/actions/creances'
 import { toast } from '@/hooks/useToast'
 
 interface Reseau { id: string; nom: string }
+interface ClientStat { nom: string; phone: string | null }
 
 interface Props {
   reseaux:  Reseau[]
+  clients:  ClientStat[]
   onClose:  () => void
 }
 
-export function NouvelleCreanceModal({ reseaux, onClose }: Props) {
+export function NouvelleCreanceModal({ reseaux, clients, onClose }: Props) {
   const router = useRouter()
   const today  = new Date().toISOString().slice(0, 10)
 
@@ -66,14 +68,25 @@ export function NouvelleCreanceModal({ reseaux, onClose }: Props) {
                 Nom du client <span className="text-red-400">*</span>
               </label>
               <input
+                list="clients-list"
                 type="text"
                 value={clientNom}
-                onChange={e => setClientNom(e.target.value)}
+                onChange={e => {
+                  const val = e.target.value
+                  setClientNom(val)
+                  const match = clients.find(c => c.nom.toLowerCase() === val.toLowerCase())
+                  if (match?.phone) setClientPhone(match.phone)
+                }}
                 placeholder="Ex : Kouassi Adjoua"
                 required
                 minLength={2}
                 className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm text-gray-900 outline-none focus:border-gray-400 transition-colors"
               />
+              <datalist id="clients-list">
+                {clients.map(c => (
+                  <option key={c.nom} value={c.nom}>{c.phone ? `${c.nom} — ${c.phone}` : c.nom}</option>
+                ))}
+              </datalist>
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1.5">

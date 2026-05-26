@@ -66,9 +66,15 @@ export default async function CreanceDetailPage({ params }: { params: Promise<{ 
             <ChevronLeft size={14}/> Créances
           </Link>
           <h1 className="font-display text-xl font-semibold text-gray-900">{creance.clientNom}</h1>
-          {creance.clientPhone && (
-            <p className="text-sm text-gray-500">{creance.clientPhone}</p>
-          )}
+          <div className="flex items-center gap-3 flex-wrap mt-0.5">
+            {creance.clientPhone && (
+              <p className="text-sm text-gray-500">{creance.clientPhone}</p>
+            )}
+            <Link href={`/creances?client=${encodeURIComponent(creance.clientNom)}`}
+              className="text-xs text-amber-600 hover:text-amber-800 underline underline-offset-2 transition-colors">
+              Voir toutes ses créances →
+            </Link>
+          </div>
         </div>
         <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statutCls}`}>{statutLabel}</span>
       </div>
