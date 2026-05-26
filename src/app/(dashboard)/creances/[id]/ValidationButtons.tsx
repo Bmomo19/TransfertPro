@@ -11,22 +11,22 @@ export function ValidationButtons({ remboursementId, creanceId }: { remboursemen
   const [loading,  setLoading]  = useState<'valider' | 'rejeter' | null>(null)
   const [showNote, setShowNote] = useState(false)
   const [note,     setNote]     = useState('')
+  const [error,    setError]    = useState<string | null>(null)
 
   async function handleValider() {
-    setLoading('valider')
+    setLoading('valider'); setError(null)
     const res = await validerRemboursement(remboursementId)
     setLoading(null)
-    if (!res.ok) { toast.error(res.error); return }
+    if (!res.ok) { setError(res.error ?? 'Erreur'); return }
     toast.success('Remboursement validé')
     router.refresh()
   }
 
   async function handleRejeter() {
-    setLoading('rejeter')
+    setLoading('rejeter'); setError(null)
     const res = await rejeterRemboursement(remboursementId, note)
     setLoading(null)
-    if (!res.ok) { toast.error(res.error); return }
-    toast.error('Remboursement rejeté')
+    if (!res.ok) { setError(res.error ?? 'Erreur'); return }
     setShowNote(false); setNote('')
     router.refresh()
   }
@@ -55,17 +55,22 @@ export function ValidationButtons({ remboursementId, creanceId }: { remboursemen
   )
 
   return (
-    <div className="flex gap-2 mt-2">
-      <button onClick={handleValider} disabled={!!loading}
-        className="flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-600 disabled:opacity-60 transition-colors active:scale-[0.97]">
-        <CheckCircle2 size={13}/>
-        {loading === 'valider' ? '…' : 'Valider'}
-      </button>
-      <button onClick={() => setShowNote(true)} disabled={!!loading}
-        className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-60 transition-colors active:scale-[0.97]">
-        <XCircle size={13}/>
-        Rejeter
-      </button>
+    <div className="mt-2 space-y-1.5">
+      {error && (
+        <p className="rounded-lg bg-red-50 border border-red-200 px-2.5 py-1.5 text-xs text-red-700">{error}</p>
+      )}
+      <div className="flex gap-2">
+        <button onClick={handleValider} disabled={!!loading}
+          className="flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-600 disabled:opacity-60 transition-colors active:scale-[0.97]">
+          <CheckCircle2 size={13}/>
+          {loading === 'valider' ? '…' : 'Valider'}
+        </button>
+        <button onClick={() => { setShowNote(true); setError(null) }} disabled={!!loading}
+          className="flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-60 transition-colors active:scale-[0.97]">
+          <XCircle size={13}/>
+          Rejeter
+        </button>
+      </div>
     </div>
   )
 }

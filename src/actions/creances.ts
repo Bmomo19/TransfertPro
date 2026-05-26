@@ -145,16 +145,18 @@ export async function validerRemboursement(remboursementId: string): Promise<Act
     const apresVal  = dejaPaye + Number(remboursement.montant)
     const estSolde  = apresVal >= Number(remboursement.creance.montant) - 0.01
 
-    await prisma.$transaction([
-      prisma.remboursement.update({
+    await prisma.$transaction(async (tx) => {
+      await tx.remboursement.update({
         where: { id: remboursementId },
         data:  { statut: 'VALIDE', validatedById: id, validatedAt: new Date() },
-      }),
-      ...(estSolde ? [prisma.creance.update({
-        where: { id: remboursement.creanceId },
-        data:  { statut: 'REMBOURSE' },
-      })] : []),
-    ])
+      })
+      if (estSolde) {
+        await tx.creance.update({
+          where: { id: remboursement.creanceId },
+          data:  { statut: 'REMBOURSE' },
+        })
+      }
+    })
 
     await audit(
       { tenantId: tenantId!, actorType: 'USER', actorId: id, actorName: name, userId: id, ip, ua },
