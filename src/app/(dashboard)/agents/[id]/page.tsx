@@ -12,12 +12,13 @@ import { ROLE_LABELS } from '@/lib/constants'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
 
-export default async function AgentDetailPage({ params }: { params:{ id:string } }) {
+export default async function AgentDetailPage({ params }: { params: Promise<{ id:string }> }) {
+  const { id } = await params
   const session = await getServerSession(authOptions)
   if(!session?.user) redirect('/login')
 
   const agent = await prisma.agent.findFirst({
-    where:   { id:params.id, tenantId:session.user.tenantId! },
+    where:   { id, tenantId:session.user.tenantId! },
     include: {
       saisies: {
         orderBy: { date:'desc' },

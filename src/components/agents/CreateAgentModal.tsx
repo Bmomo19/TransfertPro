@@ -1,49 +1,63 @@
 'use client'
 import { useState } from 'react'
-import { UserPlus } from 'lucide-react'
+import { UserPlus, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { Input } from '@/components/ui/Input'
-import { Select } from '@/components/ui/Select'
 import { createAgent } from '@/actions/agents'
 import { toast } from '@/hooks/useToast'
 
 export function CreateAgentModal() {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen]       = useState(false)
   const [loading, setLoading] = useState(false)
-  const [result, setResult] = useState<{code:string;pin:string}|null>(null)
+  const [result, setResult]   = useState<{code:string;pin:string}|null>(null)
+  const [copied, setCopied]   = useState(false)
 
   async function handleSubmit(e:React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
     const res = await createAgent(new FormData(e.currentTarget))
     setLoading(false)
-    if(res.ok) {
-      setResult(res.data)
-    } else {
-      toast.error(res.error)
-    }
+    if (res.ok) setResult(res.data)
+    else toast.error(res.error)
   }
 
-  function close() { setOpen(false); setResult(null) }
+  function copy() {
+    if (!result) return
+    navigator.clipboard.writeText(`Code : ${result.code}\nPIN  : ${result.pin}`)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  function close() { setOpen(false); setResult(null); setCopied(false) }
 
   return (
     <>
       <Button variant="primary" leftIcon={<UserPlus size={16}/>} onClick={()=>setOpen(true)}>
         Créer un agent
       </Button>
-      <Modal open={open} onClose={close} title={result ? "Agent créé avec succès" : "Nouvel agent"}>
+      {/* onClose=undefined quand le PIN est affiché → empêche fermeture accidentelle */}
+      <Modal open={open} onClose={result ? undefined : close} title={result ? 'Agent créé — notez le PIN' : 'Nouvel agent'}>
         {result ? (
           <div className="space-y-4">
-            <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-4">
-              <p className="text-sm font-medium text-emerald-800 mb-3">Communiquez ces informations à l'agent de manière confidentielle :</p>
-              <div className="space-y-2">
-                <div className="flex justify-between"><span className="text-sm text-gray-600">Code agent</span><span className="font-mono font-bold text-gray-900">{result.code}</span></div>
-                <div className="flex justify-between"><span className="text-sm text-gray-600">PIN temporaire</span><span className="font-mono font-bold text-2xl tracking-widest text-[var(--tenant-primary)]">{result.pin}</span></div>
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-5">
+              <p className="text-sm font-medium text-emerald-800 mb-4">Communiquez ces informations à l'agent de manière confidentielle :</p>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between rounded-xl bg-white border border-emerald-100 px-4 py-3">
+                  <span className="text-sm text-gray-500">Code agent</span>
+                  <span className="font-mono font-bold text-gray-900 text-lg">{result.code}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl bg-white border border-emerald-100 px-4 py-3">
+                  <span className="text-sm text-gray-500">PIN temporaire</span>
+                  <span className="font-mono font-bold text-3xl tracking-[0.3em] text-[var(--tenant-primary)]">{result.pin}</span>
+                </div>
               </div>
-              <p className="mt-3 text-xs text-emerald-700">⚠️ L'agent devra modifier ce PIN à la première connexion.</p>
+              <button onClick={copy} className="mt-4 w-full inline-flex items-center justify-center gap-2 text-sm text-emerald-700 hover:text-emerald-900 transition-colors">
+                {copied ? <><Check size={14}/> Copié !</> : <><Copy size={14}/> Copier code + PIN</>}
+              </button>
+              <p className="mt-3 text-xs text-emerald-600 text-center">L'agent devra modifier ce PIN à la première connexion.</p>
             </div>
-            <Button variant="primary" fullWidth onClick={close}>Fermer</Button>
+            <Button variant="primary" fullWidth onClick={close}>J'ai noté, fermer</Button>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
