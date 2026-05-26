@@ -10,9 +10,9 @@ export async function proxy(req: NextRequest) {
   // Ignorer les assets statiques
   if (STATIC.some(p => pathname.startsWith(p))) return NextResponse.next()
 
-  // Extraire le tenant depuis l'hostname
+  // Extraire le tenant depuis l'hostname ou le query param ?tenant=
   const host       = req.headers.get('host') ?? ''
-  const tenantSlug = extractSlug(host, req.headers.get('x-tenant'))
+  const tenantSlug = extractSlug(host, req.headers.get('x-tenant'), req.nextUrl.searchParams.get('tenant'))
 
   const reqHeaders = new Headers(req.headers)
   if (tenantSlug) reqHeaders.set('x-tenant-slug', tenantSlug)
@@ -59,8 +59,9 @@ export async function proxy(req: NextRequest) {
   return NextResponse.next({ request: { headers: reqHeaders } })
 }
 
-function extractSlug(host: string, xTenant: string | null): string {
-  if (xTenant) return xTenant  // dev override
+function extractSlug(host: string, xTenant: string | null, queryTenant: string | null = null): string {
+  if (xTenant) return xTenant      // header dev override
+  if (queryTenant) return queryTenant  // ?tenant= (pas de sous-domaine custom)
   const hostname = host.split(':')[0]  // strip port
   const parts = hostname.split('.')
   // hudiphen.localhost (dev) → ['hudiphen', 'localhost']
