@@ -44,22 +44,6 @@ export default async function SettingsPage() {
       </Card>
 
       <Card>
-        <h2 className="mb-1 font-display text-sm font-semibold text-gray-900">Réseaux configurés</h2>
-        <p className="mb-4 text-xs text-gray-400">Taux de commission et frais gateway par réseau.</p>
-        <div className="space-y-2">
-          {tenant.reseaux.map(r=>(
-            <div key={r.id} className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-2.5">
-              <span className="text-sm font-medium text-gray-700">{r.nom}</span>
-              <div className="flex gap-4 text-xs text-gray-500">
-                <span>Comm. {(Number(r.tauxCommission)*100).toFixed(1)}%</span>
-                <span>Gateway {(Number(r.tauxGateway)*100).toFixed(1)}%</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
         <h2 className="mb-1 font-display text-sm font-semibold text-gray-900">Commissions agents</h2>
         <p className="mb-4 text-xs text-gray-400">
           Activez le suivi de commission pour les réseaux où les agents déclarent ce qu'ils ont reçu.
