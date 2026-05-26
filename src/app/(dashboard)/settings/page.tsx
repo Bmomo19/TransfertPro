@@ -5,6 +5,7 @@ import { getTenantBySlug, getTenantSlug } from '@/lib/tenant'
 import { Card } from '@/components/ui/Card'
 import { PLAN_LABELS, PLAN_LIMITS } from '@/lib/constants'
 import { Badge } from '@/components/ui/Badge'
+import { ReseauxCommissionSettings } from './ReseauxCommissionSettings'
 
 export default async function SettingsPage() {
   const session = await getServerSession(authOptions)
@@ -43,7 +44,8 @@ export default async function SettingsPage() {
       </Card>
 
       <Card>
-        <h2 className="mb-4 font-display text-sm font-semibold text-gray-900">Réseaux configurés</h2>
+        <h2 className="mb-1 font-display text-sm font-semibold text-gray-900">Réseaux configurés</h2>
+        <p className="mb-4 text-xs text-gray-400">Taux de commission et frais gateway par réseau.</p>
         <div className="space-y-2">
           {tenant.reseaux.map(r=>(
             <div key={r.id} className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-2.5">
@@ -55,6 +57,22 @@ export default async function SettingsPage() {
             </div>
           ))}
         </div>
+      </Card>
+
+      <Card>
+        <h2 className="mb-1 font-display text-sm font-semibold text-gray-900">Commissions agents</h2>
+        <p className="mb-4 text-xs text-gray-400">
+          Activez le suivi de commission pour les réseaux où les agents déclarent ce qu'ils ont reçu.
+        </p>
+        <ReseauxCommissionSettings
+          reseaux={tenant.reseaux.filter(r => r.isActive).map(r => ({
+            id:                r.id,
+            nom:               r.nom,
+            hasCommissionAgent: r.hasCommissionAgent,
+            modeCommission:    r.modeCommission as 'DIRECT' | 'CUMULATIF',
+            commissionLabel:   r.commissionLabel,
+          }))}
+        />
       </Card>
     </div>
   )

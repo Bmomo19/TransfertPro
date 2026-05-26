@@ -61,3 +61,48 @@ export async function enregistrerRetrait(
     return { ok: false, error: err.message ?? 'Erreur lors de l\'enregistrement' }
   }
 }
+
+const ReseauCommissionSchema = z.object({
+  reseauId:          z.string().cuid(),
+  hasCommissionAgent: z.boolean(),
+  modeCommission:    z.enum(['DIRECT', 'CUMULATIF']),
+  commissionLabel:   z.string().max(60).optional(),
+})
+
+export async function updateReseauCommission(
+  payload: unknown,
+): Promise<ActionResult<void>> {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) return { ok: false, error: 'Non authentifié' }
+    if (!['RESPONSABLE', 'SUPER_ADMIN'].includes(session.user.role)) {
+      return { ok: false, error: 'Accès refusé' }
+    }
+
+    const parsed = ReseauCommissionSchema.safeParse(payload)
+    if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message }
+
+    const { tenantId } = session.user
+    const d = parsed.data
+
+    const reseau = await prisma.tenantReseau.findFirst({
+      where: { id: d.reseauId, tenantId: tenantId! },
+    })
+    if (!reseau) return { ok: false, error: 'Réseau introuvable' }
+
+    await prisma.tenantReseau.update({
+      where: { id: d.reseauId },
+      data: {
+        hasCommissionAgent: d.hasCommissionAgent,
+        modeCommission:     d.modeCommission,
+        commissionLabel:    d.commissionLabel || null,
+      },
+    })
+
+    revalidatePath('/settings')
+    revalidatePath('/saisie')
+    return { ok: true, data: undefined }
+  } catch (err: any) {
+    return { ok: false, error: err.message }
+  }
+}
