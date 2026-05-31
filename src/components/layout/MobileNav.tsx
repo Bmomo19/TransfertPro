@@ -2,8 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LayoutDashboard, PenLine, Users, BookOpen, ShieldCheck, Building2, LogOut, HandCoins } from 'lucide-react'
-import { useSession, signOut } from 'next-auth/react'
-import { getLogoutUrl } from '@/lib/logout'
+import { useSession } from 'next-auth/react'
 
 const TABS_RESP = [
   { href:'/dashboard',   icon:LayoutDashboard, label:'Accueil' },
@@ -42,7 +41,7 @@ export function MobileNav() {
           )
         })}
         <button
-          onClick={async () => { await signOut({ redirect: false }); window.location.href = getLogoutUrl(session?.user?.tenantSlug) }}
+          onClick={() => { const s = session?.user?.tenantSlug; window.location.href = `/api/logout${s ? `?tenant=${s}` : ''}` }}
           className="flex flex-1 flex-col items-center gap-0.5 py-3 text-[10px] font-medium text-gray-400 transition-colors active:text-red-400">
           <LogOut size={20} strokeWidth={1.5}/>
           <span>Quitter</span>

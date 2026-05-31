@@ -4,8 +4,7 @@ import { usePathname } from 'next/navigation'
 import { LayoutDashboard, PenLine, Users, BookOpen, Coins, ShieldCheck, Settings, LogOut, Building2, HandCoins } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Avatar } from '@/components/ui/Avatar'
-import { useSession, signOut } from 'next-auth/react'
-import { getLogoutUrl } from '@/lib/logout'
+import { useSession } from 'next-auth/react'
 
 const NAV = {
   AGENT:      [{ href:'/saisie',   icon:PenLine,    label:'Ma saisie' },
@@ -69,7 +68,7 @@ export function Sidebar({ tenantName, tenantColor }: SidebarProps) {
             <p className="truncate text-sm font-medium text-gray-900">{session?.user?.name}</p>
             <p className="truncate text-xs text-gray-400">{role}</p>
           </div>
-          <button onClick={async () => { await signOut({ redirect: false }); window.location.href = getLogoutUrl(session?.user?.tenantSlug) }} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Déconnexion">
+          <button onClick={() => { const s = session?.user?.tenantSlug; window.location.href = `/api/logout${s ? `?tenant=${s}` : ''}` }} className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600" aria-label="Déconnexion">
             <LogOut size={16}/>
           </button>
         </div>
