@@ -1,7 +1,12 @@
 'use client'
 import { useState } from 'react'
 import { CheckCircle2, RefreshCw } from 'lucide-react'
-import type { TenantReseau } from '@prisma/client'
+interface TenantReseau {
+  id: string; tenantId: string; code: string; nom: string
+  tauxCommission: number; tauxGateway: number
+  isActive: boolean; ordre: number; modeCommission: string
+  hasCommissionAgent: boolean; commissionLabel: string | null
+}
 import { soumettreSaisie } from '@/actions/saisie'
 import { toast } from '@/hooks/useToast'
 import { fmtN } from '@/lib/formatting'

@@ -47,37 +47,36 @@ export default async function CommissionsPage() {
     r => r.modeCommission === 'CUMULATIF' && r.hasCommissionAgent && r.isActive,
   )
 
+  // 1 query pour tous les derniers retraits (au lieu de 1 par réseau)
+  const allRetraits = cumulatifReseaux.length
+    ? await prisma.commissionRetrait.findMany({
+        where:   { tenantId, reseauId: { in: cumulatifReseaux.map(r => r.id) } },
+        orderBy: { date: 'desc' },
+        select:  { reseauId: true, date: true, montant: true },
+      })
+    : []
+  const retraitMap = new Map<string, { date: Date; montant: { toString(): string } }>()
+  for (const r of allRetraits) {
+    if (!retraitMap.has(r.reseauId)) retraitMap.set(r.reseauId, r)
+  }
+
+  // aggregate + findFirst lancés en parallèle par réseau
   const cumulTracking = await Promise.all(
     cumulatifReseaux.map(async r => {
-      const lastRetrait = await prisma.commissionRetrait.findFirst({
-        where:   { tenantId, reseauId: r.id },
-        orderBy: { date: 'desc' },
-        select:  { date: true, montant: true },
-      })
+      const lastRetrait = retraitMap.get(r.id) ?? null
+      const dateFilter  = lastRetrait ? { gt: lastRetrait.date } : undefined
 
-      // currentCumul = somme des deltas depuis le dernier retrait (pas la valeur du compteur)
-      const cumulAgg = await prisma.saisieCommission.aggregate({
-        where: {
-          reseauId: r.id,
-          saisie: {
-            tenantId,
-            ...(lastRetrait ? { date: { gt: lastRetrait.date } } : {}),
-          },
-        },
-        _sum: { montant: true },
-      })
-
-      const lastSaisie = await prisma.saisieCommission.findFirst({
-        where: {
-          reseauId: r.id,
-          saisie: {
-            tenantId,
-            ...(lastRetrait ? { date: { gt: lastRetrait.date } } : {}),
-          },
-        },
-        orderBy: { saisie: { date: 'desc' } },
-        select:  { saisie: { select: { date: true } } },
-      })
+      const [cumulAgg, lastSaisie] = await Promise.all([
+        prisma.saisieCommission.aggregate({
+          where:  { reseauId: r.id, saisie: { tenantId, ...(dateFilter ? { date: dateFilter } : {}) } },
+          _sum:   { montant: true },
+        }),
+        prisma.saisieCommission.findFirst({
+          where:   { reseauId: r.id, saisie: { tenantId, ...(dateFilter ? { date: dateFilter } : {}) } },
+          orderBy: { saisie: { date: 'desc' } },
+          select:  { saisie: { select: { date: true } } },
+        }),
+      ])
 
       return {
         reseauId:           r.id,

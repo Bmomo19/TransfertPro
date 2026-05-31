@@ -18,44 +18,46 @@ export default async function SaisiePage() {
   const today   = new Date(); today.setHours(0, 0, 0, 0)
 
   // Réseaux avec commission agent, dans l'ordre défini
-  const commReseaux = tenant.reseaux.filter(r => r.hasCommissionAgent && r.isActive)
+  const commReseaux    = tenant.reseaux.filter(r => r.hasCommissionAgent && r.isActive)
+  const cumulatifIds   = commReseaux.filter(r => r.modeCommission === 'CUMULATIF').map(r => r.id)
 
-  // Pour chaque réseau CUMULATIF : trouver le dernier cumul enregistré (après le dernier retrait)
+  // 1 seule query pour tous les derniers retraits des réseaux CUMULATIF
+  const allRetraits = cumulatifIds.length
+    ? await prisma.commissionRetrait.findMany({
+        where:   { tenantId: tenant.id, reseauId: { in: cumulatifIds } },
+        orderBy: { date: 'desc' },
+        select:  { reseauId: true, date: true },
+      })
+    : []
+  const retraitMap = new Map<string, Date>()
+  for (const r of allRetraits) {
+    if (!retraitMap.has(r.reseauId)) retraitMap.set(r.reseauId, r.date)
+  }
+
+  // Toutes les queries saisieCommission lancées en parallèle
   const commissionReseaux: CommissionReseau[] = await Promise.all(
     commReseaux.map(async r => {
-      let dernierCumul: number | null = null
-
-      if (r.modeCommission === 'CUMULATIF') {
-        const lastRetrait = await prisma.commissionRetrait.findFirst({
-          where: { tenantId: tenant.id, reseauId: r.id },
-          orderBy: { date: 'desc' },
-          select: { date: true },
-        })
-
-        const prev = await prisma.saisieCommission.findFirst({
-          where: {
-            reseauId: r.id,
-            valeurSaisie: { not: null },
-            saisie: {
-              tenantId: tenant.id,
-              date: {
-                lt: today,
-                ...(lastRetrait ? { gte: lastRetrait.date } : {}),
-              },
-            },
-          },
-          orderBy: { saisie: { date: 'desc' } },
-          select: { valeurSaisie: true },
-        })
-
-        dernierCumul = prev?.valeurSaisie ? Number(prev.valeurSaisie) : 0
+      if (r.modeCommission !== 'CUMULATIF') {
+        return { reseauId: r.id, label: r.commissionLabel ?? r.nom, mode: 'DIRECT' as const, dernierCumul: null }
       }
-
+      const lastRetraitDate = retraitMap.get(r.id) ?? null
+      const prev = await prisma.saisieCommission.findFirst({
+        where: {
+          reseauId:    r.id,
+          valeurSaisie: { not: null },
+          saisie: {
+            tenantId: tenant.id,
+            date: { lt: today, ...(lastRetraitDate ? { gte: lastRetraitDate } : {}) },
+          },
+        },
+        orderBy: { saisie: { date: 'desc' } },
+        select:  { valeurSaisie: true },
+      })
       return {
         reseauId:    r.id,
         label:       r.commissionLabel ?? r.nom,
-        mode:        r.modeCommission as 'DIRECT' | 'CUMULATIF',
-        dernierCumul,
+        mode:        'CUMULATIF' as const,
+        dernierCumul: prev?.valeurSaisie ? Number(prev.valeurSaisie) : 0,
       }
     })
   )

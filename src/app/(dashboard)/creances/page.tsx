@@ -39,26 +39,36 @@ export default async function CreancesPage({
     ...(clientFilter ? { clientNom: clientFilter } : {}),
   }
 
-  const [creances, total] = await Promise.all([
+  const agentFilter = isAgent ? { agentId: session.user.id } : {}
+
+  // Toutes les queries en parallèle
+  const [creances, total, allCreancesFlat, statsEnCours, statsPending] = await Promise.all([
     prisma.creance.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * PER,
       take: PER,
       include: {
-        reseau:        { select: { nom: true } },
+        reseau:         { select: { nom: true } },
         remboursements: { select: { montant: true, statut: true } },
-        agent:         { select: { name: true, code: true } },
+        agent:          { select: { name: true, code: true } },
       },
     }),
     prisma.creance.count({ where }),
+    prisma.creance.findMany({
+      where:  { tenantId, ...agentFilter },
+      select: { clientNom: true, clientPhone: true, montant: true, statut: true, echeance: true },
+    }),
+    prisma.creance.aggregate({
+      where: { tenantId, statut: 'EN_COURS', ...agentFilter },
+      _sum:   { montant: true },
+      _count: { _all: true },
+    }),
+    isResp
+      ? prisma.remboursement.count({ where: { statut: 'EN_ATTENTE', creance: { tenantId } } })
+      : Promise.resolve(0),
   ])
 
-  // Stats clients — regroupement en JS (évite les limitations du groupBy pg adapter)
-  const allCreancesFlat = await prisma.creance.findMany({
-    where: { tenantId, ...(isAgent ? { agentId: session.user.id } : {}) },
-    select: { clientNom: true, clientPhone: true, montant: true, statut: true, echeance: true },
-  })
   type ClientStat = { nom: string; phone: string | null; count: number; enCoursCount: number; enCoursMontant: number; hasOverdue: boolean }
   const clientMap = new Map<string, ClientStat>()
   for (const c of allCreancesFlat) {
@@ -75,18 +85,6 @@ export default async function CreancesPage({
   const clients = Array.from(clientMap.values())
     .filter(c => c.count > 0)
     .sort((a, b) => b.enCoursCount - a.enCoursCount || a.nom.localeCompare(b.nom))
-
-  // Stats
-  const [statsEnCours, statsPending] = await Promise.all([
-    prisma.creance.aggregate({
-      where: { tenantId, statut: 'EN_COURS', ...(isAgent ? { agentId: session.user.id } : {}) },
-      _sum:   { montant: true },
-      _count: { _all: true },
-    }),
-    isResp ? prisma.remboursement.count({
-      where: { statut: 'EN_ATTENTE', creance: { tenantId } },
-    }) : Promise.resolve(0),
-  ])
 
   const rows = creances.map(c => {
     const paye    = c.remboursements.filter(r => r.statut === 'VALIDE').reduce((s, r) => s + Number(r.montant), 0)

@@ -134,6 +134,8 @@ model Saisie {
   commissions SaisieCommission[]
 
   @@unique([tenantId, date, agentId])
+  @@index([tenantId, date(sort: Desc)])
+  @@index([tenantId, statut])
   @@map("saisies")
 }
 
@@ -159,6 +161,8 @@ model SaisieCommission {
   montant      Decimal       @db.Decimal(18, 2) // commission du jour (delta pour CUMULATIF)
   valeurSaisie Decimal?      @db.Decimal(18, 2) // cumul brut entré par l'agent (CUMULATIF only)
 
+  @@index([reseauId])
+  @@index([saisieId])
   @@map("saisie_commissions")
 }
 
@@ -243,6 +247,8 @@ model Creance {
 
   @@index([tenantId, statut])
   @@index([tenantId, agentId])
+  @@index([tenantId, clientNom])
+  @@index([tenantId, createdAt(sort: Desc)])
   @@map("creances")
 }
 
@@ -261,6 +267,7 @@ model Remboursement {
   createdAt     DateTime            @default(now())
 
   @@index([creanceId])
+  @@index([creanceId, statut])
   @@map("remboursements")
 }
 
