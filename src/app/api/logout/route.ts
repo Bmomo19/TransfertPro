@@ -1,26 +1,22 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
-// Déconnexion instantanée : supprime les cookies NextAuth côté serveur et redirige.
-// Évite le double aller-retour de signOut({ redirect: false }) + window.location.href.
 export async function GET(req: NextRequest) {
-  const tenant      = req.nextUrl.searchParams.get('tenant')
-  const loginPath   = tenant ? `/login?tenant=${tenant}` : '/login'
-  const redirectUrl = new URL(loginPath, req.url)
+  const tenant    = req.nextUrl.searchParams.get('tenant')
+  const loginPath = tenant ? `/login?tenant=${tenant}` : '/login'
 
-  const res = NextResponse.redirect(redirectUrl)
+  const res = NextResponse.redirect(new URL(loginPath, req.url))
 
-  // Supprimer tous les cookies NextAuth (HTTP dev + HTTPS prod)
-  const cookiesToClear = [
-    'next-auth.session-token',
-    'next-auth.csrf-token',
-    'next-auth.callback-url',
-    '__Secure-next-auth.session-token',
-    '__Secure-next-auth.csrf-token',
-    '__Secure-next-auth.callback-url',
-    '__Host-next-auth.csrf-token',
-  ]
-  for (const name of cookiesToClear) {
-    res.cookies.set(name, '', { maxAge: 0, path: '/' })
+  // Supprimer tous les cookies présents dans la requête dont le nom contient "next-auth"
+  for (const cookie of req.cookies.getAll()) {
+    if (cookie.name.includes('next-auth') || cookie.name.includes('__Secure-next-auth') || cookie.name.includes('__Host-next-auth')) {
+      res.cookies.set(cookie.name, '', {
+        maxAge:   0,
+        path:     '/',
+        secure:   req.url.startsWith('https'),
+        httpOnly: true,
+        sameSite: 'lax',
+      })
+    }
   }
 
   return res

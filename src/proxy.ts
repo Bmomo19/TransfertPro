@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
-const PUBLIC  = ['/login', '/api/auth']
+const PUBLIC  = ['/login', '/api/auth', '/api/logout']
 const STATIC  = ['/_next/', '/favicon', '/icons/', '/manifest', '/sw.js']
 
 export async function proxy(req: NextRequest) {
