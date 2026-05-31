@@ -88,9 +88,15 @@ export default async function SaisiePage() {
     ),
   } : undefined
 
+  const reseauxSerialized = tenant.reseaux.map(r => ({
+    ...r,
+    tauxCommission: Number(r.tauxCommission),
+    tauxGateway:    Number(r.tauxGateway),
+  }))
+
   return (
     <SaisieClient
-      reseaux={tenant.reseaux}
+      reseaux={reseauxSerialized}
       commissionReseaux={commissionReseaux}
       isHud={slug === 'hudiphen'}
       color={tenant.colorPrimary}
