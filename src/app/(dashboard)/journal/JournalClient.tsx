@@ -142,6 +142,10 @@ function SaisieModal({ s, onClose, canValidate }: { s: SaisieRow; onClose: () =>
               saisieId={s.id}
               totalGlobal={s.totalGlobal}
               agentName={s.agentName}
+              details={s.details}
+              caisse={s.caisse}
+              especes={s.especes}
+              transfertResp={s.transfertResp}
             />
           )}
         </div>

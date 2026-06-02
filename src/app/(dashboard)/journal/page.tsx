@@ -6,6 +6,7 @@ import { SaisieStatut } from '@prisma/client'
 import { Pagination } from '@/components/ui/Pagination'
 import { JournalClient } from './JournalClient'
 import type { SaisieRow } from './JournalClient'
+import { Download } from 'lucide-react'
 
 const PER = 20
 
@@ -85,6 +86,14 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
               {FILTRES_LABELS[s]}
             </a>
           ))}
+          {canValidate && (
+            <a
+              href={`/api/export/saisies?mois=${new Date().toISOString().slice(0, 7)}`}
+              download
+              className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-600 hover:bg-gray-50 transition-colors">
+              <Download size={13}/> Export CSV
+            </a>
+          )}
         </div>
       </div>
 

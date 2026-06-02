@@ -159,6 +159,7 @@ export async function soumettreSaisie(payload: unknown): Promise<ActionResult<{ 
 export async function rapprocher(
   saisieId: string,
   montantAttendu: number,
+  note?: string,
 ): Promise<ActionResult<{ statut: 'VALIDE' | 'ALERTE_ECART' }>> {
   try {
     const session = await getServerSession(authOptions)
@@ -185,7 +186,7 @@ export async function rapprocher(
     await audit(
       { tenantId: tenantId!, actorType: 'USER', actorId: id, actorName: name, userId: id, ip, ua },
       'RAPPROCHEMENT', 'Saisie', saisieId, undefined,
-      { montantAttendu, ecart, statut },
+      { montantAttendu, ecart, statut, ...(note ? { note } : {}) },
     )
 
     revalidatePath('/', 'layout')
