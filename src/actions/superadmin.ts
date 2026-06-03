@@ -105,6 +105,68 @@ export async function toggleTenant(tenantId: string): Promise<ActionResult> {
   }
 }
 
+const ReseauSchema = z.object({
+  tenantId:       z.string().min(1),
+  nom:            z.string().min(2).max(50),
+  code:           z.string().min(2).max(20).trim(),
+  tauxCommission: z.coerce.number().min(0).max(1),
+  tauxGateway:    z.coerce.number().min(0).max(1),
+})
+
+export async function addReseau(payload: unknown): Promise<ActionResult<{ reseauId: string }>> {
+  try {
+    const admin  = await requireSuperAdmin()
+    const parsed = ReseauSchema.safeParse(payload)
+    if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message }
+    const d = parsed.data
+    const { ip, ua } = await getRequestMeta()
+
+    const code = d.code.toUpperCase().replace(/\s+/g, '_')
+
+    // Vérifier que le code n'existe pas déjà dans ce tenant
+    const exists = await prisma.tenantReseau.findFirst({ where: { tenantId: d.tenantId, code } })
+    if (exists) return { ok: false, error: `Le réseau "${code}" existe déjà pour cette structure` }
+
+    const ordre  = await prisma.tenantReseau.count({ where: { tenantId: d.tenantId } })
+    const reseau = await prisma.tenantReseau.create({
+      data: { tenantId: d.tenantId, nom: d.nom, code, tauxCommission: d.tauxCommission, tauxGateway: d.tauxGateway, ordre: ordre + 1 },
+    })
+    await prisma.threshold.create({
+      data: { tenantId: d.tenantId, reseauId: reseau.id, min: 200000, max: 5000000 },
+    })
+
+    await audit(
+      { tenantId: d.tenantId, actorType: 'USER', actorId: admin.id, actorName: admin.name, ip, ua },
+      'CREATE', 'TenantReseau', reseau.id, undefined, { nom: reseau.nom, code }
+    )
+    revalidatePath('/superadmin')
+    return { ok: true, data: { reseauId: reseau.id } }
+  } catch (err: any) {
+    return { ok: false, error: err.message }
+  }
+}
+
+export async function toggleReseau(reseauId: string): Promise<ActionResult> {
+  try {
+    const admin  = await requireSuperAdmin()
+    const reseau = await prisma.tenantReseau.findUnique({ where: { id: reseauId } })
+    if (!reseau) return { ok: false, error: 'Réseau introuvable' }
+    const { ip, ua } = await getRequestMeta()
+
+    const updated = await prisma.tenantReseau.update({ where: { id: reseauId }, data: { isActive: !reseau.isActive } })
+
+    await audit(
+      { tenantId: reseau.tenantId, actorType: 'USER', actorId: admin.id, actorName: admin.name, ip, ua },
+      'UPDATE', 'TenantReseau', reseauId,
+      { isActive: reseau.isActive }, { isActive: updated.isActive }
+    )
+    revalidatePath('/superadmin')
+    return { ok: true, data: undefined }
+  } catch (err: any) {
+    return { ok: false, error: err.message }
+  }
+}
+
 export async function updateTenantPlan(tenantId: string, plan: 'STARTER' | 'STANDARD' | 'PREMIUM'): Promise<ActionResult> {
   try {
     const admin = await requireSuperAdmin()

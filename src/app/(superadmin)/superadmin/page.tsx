@@ -5,12 +5,14 @@ import { fmtDate } from '@/lib/formatting'
 import { PLAN_LABELS } from '@/lib/constants'
 import { CreateTenantModal } from './CreateTenantModal'
 import { TenantActions } from './TenantActions'
+import { ReseauxModal } from './ReseauxModal'
 
 export default async function SuperAdminPage() {
   const tenants = await prisma.tenant.findMany({
-    orderBy: { createdAt:'desc' },
+    orderBy: { createdAt: 'desc' },
     include: {
-      _count: { select:{ agents:true, users:true, saisies:true } },
+      _count:  { select: { agents: true, users: true, saisies: true } },
+      reseaux: { orderBy: { ordre: 'asc' }, select: { id: true, nom: true, code: true, tauxCommission: true, tauxGateway: true, isActive: true } },
     },
   })
 
@@ -43,7 +45,7 @@ export default async function SuperAdminPage() {
         {tenants.map(t=>(
           <Card key={t.id} padding="normal">
             <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-lg" style={{background:t.colorPrimary,color:'#fff'}}>💱</div>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg" style={{background:t.colorPrimary,color:'#fff'}}>💱</div>
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-display text-base font-semibold text-gray-900">{t.name}</h3>
@@ -60,7 +62,18 @@ export default async function SuperAdminPage() {
                   <span>Créé {fmtDate(t.createdAt)}</span>
                 </div>
               </div>
-              <TenantActions tenantId={t.id} tenantSlug={t.slug} isActive={t.isActive} currentPlan={t.plan}/>
+              <div className="flex flex-col items-end gap-2">
+                <TenantActions tenantId={t.id} tenantSlug={t.slug} isActive={t.isActive} currentPlan={t.plan}/>
+                <ReseauxModal
+                  tenantId={t.id}
+                  tenantName={t.name}
+                  reseaux={t.reseaux.map(r => ({
+                    ...r,
+                    tauxCommission: Number(r.tauxCommission),
+                    tauxGateway:    Number(r.tauxGateway),
+                  }))}
+                />
+              </div>
             </div>
           </Card>
         ))}
