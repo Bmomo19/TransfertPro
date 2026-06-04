@@ -37,8 +37,8 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL('/change-pin', req.url))
   }
 
-  // RBAC : seul le superadmin accède à /superadmin/*
-  if (pathname.startsWith('/superadmin') && token.role !== 'SUPER_ADMIN') {
+  // RBAC : seul le superadmin accède à /superadmin/* et /abonnements
+  if ((pathname.startsWith('/superadmin') || pathname.startsWith('/abonnements')) && token.role !== 'SUPER_ADMIN') {
     return NextResponse.redirect(new URL('/dashboard', req.url))
   }
 

@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, PenLine, Users, BookOpen, Coins, ShieldCheck, Settings, LogOut, Building2, HandCoins } from 'lucide-react'
+import { LayoutDashboard, PenLine, Users, BookOpen, Coins, ShieldCheck, Settings, LogOut, Building2, HandCoins, CreditCard } from 'lucide-react'
 import { cn } from '@/lib/cn'
 import { Avatar } from '@/components/ui/Avatar'
 import { useSession } from 'next-auth/react'
@@ -16,7 +16,8 @@ const NAV = {
                { href:'/creances',    icon:HandCoins,       label:'Créances' },
                { href:'/audit',       icon:ShieldCheck,     label:'Audit' },
                { href:'/settings',    icon:Settings,        label:'Paramètres' }],
-  SUPER_ADMIN:[{ href:'/superadmin',  icon:Building2,       label:'Structures' }],
+  SUPER_ADMIN:[{ href:'/superadmin',    icon:Building2,  label:'Structures'   },
+               { href:'/abonnements',  icon:CreditCard, label:'Abonnements'  }],
 }
 
 interface SidebarProps { tenantName?: string; tenantColor?: string }

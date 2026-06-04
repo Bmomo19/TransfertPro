@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, PenLine, Users, BookOpen, ShieldCheck, Building2, LogOut, HandCoins } from 'lucide-react'
+import { LayoutDashboard, PenLine, Users, BookOpen, ShieldCheck, Building2, LogOut, HandCoins, CreditCard } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 
 const TABS_RESP = [
@@ -15,7 +15,10 @@ const TABS_AGENT = [
   { href:'/saisie',   icon:PenLine,   label:'Saisie' },
   { href:'/creances', icon:HandCoins, label:'Créances' },
 ]
-const TABS_SUPER = [{ href:'/superadmin', icon:Building2, label:'Structures' }]
+const TABS_SUPER = [
+  { href:'/superadmin',   icon:Building2,  label:'Structures'  },
+  { href:'/abonnements',  icon:CreditCard, label:'Abonnements' },
+]
 
 export function MobileNav() {
   const { data: session, status } = useSession()
