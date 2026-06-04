@@ -34,9 +34,9 @@ export function TenantActions({ tenantId, tenantSlug, isActive, currentPlan }: P
   }
 
   return (
-    <div className="flex items-center gap-2 flex-shrink-0">
+    <div className="flex items-center gap-2 shrink-0">
       <select defaultValue={currentPlan} onChange={handlePlan}
-        className="rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--tenant-primary)]">
+        className="rounded-xl border border-gray-200 bg-white px-2 py-1.5 text-xs font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-(--tenant-primary)">
         <option value="STARTER">Starter</option>
         <option value="STANDARD">Standard</option>
         <option value="PREMIUM">Premium</option>

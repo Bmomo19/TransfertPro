@@ -28,6 +28,7 @@ model Tenant {
   thresholds           Threshold[]
   commissionRetraits   CommissionRetrait[]
   creances             Creance[]
+  abonnement           Abonnement?
 
   @@map("tenants")
 }
@@ -271,6 +272,40 @@ model Remboursement {
   @@map("remboursements")
 }
 
+// ─── ABONNEMENTS ─────────────────────────────────────────────────────
+model Abonnement {
+  id              String     @id @default(cuid())
+  tenantId        String     @unique
+  tenant          Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  montant         Decimal    @db.Decimal(18, 2)
+  jourPrelevement Int        @default(1)   // 1–28 : jour du mois où le paiement est dû
+  devise          String     @default("XOF")
+  actif           Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  paiements       Paiement[]
+
+  @@map("abonnements")
+}
+
+model Paiement {
+  id           String         @id @default(cuid())
+  abonnementId String
+  abonnement   Abonnement     @relation(fields: [abonnementId], references: [id], onDelete: Cascade)
+  mois         String         // "2026-06"
+  montant      Decimal        @db.Decimal(18, 2)
+  dateLimite   DateTime       @db.Date
+  statut       PaiementStatut @default(EN_ATTENTE)
+  datePaiement DateTime?
+  note         String?
+  createdById  String
+  createdAt    DateTime       @default(now())
+
+  @@unique([abonnementId, mois])
+  @@index([abonnementId])
+  @@map("paiements")
+}
+
 // ─── ENUMS ────────────────────────────────────────────────────────────
 enum Plan {
   STARTER
@@ -317,6 +352,12 @@ enum AuditAction {
   EXPORT
   RAPPROCHEMENT
   RETRAIT_COMMISSION
+}
+
+enum PaiementStatut {
+  EN_ATTENTE
+  PAYE
+  EN_RETARD
 }
 
 enum CreanceStatut {

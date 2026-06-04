@@ -6,13 +6,15 @@ import { PLAN_LABELS } from '@/lib/constants'
 import { CreateTenantModal } from './CreateTenantModal'
 import { TenantActions } from './TenantActions'
 import { ReseauxModal } from './ReseauxModal'
+import { AbonnementModal } from './AbonnementModal'
 
 export default async function SuperAdminPage() {
   const tenants = await prisma.tenant.findMany({
     orderBy: { createdAt: 'desc' },
     include: {
-      _count:  { select: { agents: true, users: true, saisies: true } },
-      reseaux: { orderBy: { ordre: 'asc' }, select: { id: true, nom: true, code: true, tauxCommission: true, tauxGateway: true, isActive: true } },
+      _count:      { select: { agents: true, users: true, saisies: true } },
+      reseaux:     { orderBy: { ordre: 'asc' }, select: { id: true, nom: true, code: true, tauxCommission: true, tauxGateway: true, isActive: true } },
+      abonnement:  { include: { paiements: { orderBy: { mois: 'desc' }, take: 13 } } },
     },
   })
 
@@ -64,15 +66,32 @@ export default async function SuperAdminPage() {
               </div>
               <div className="flex flex-col items-end gap-2">
                 <TenantActions tenantId={t.id} tenantSlug={t.slug} isActive={t.isActive} currentPlan={t.plan}/>
-                <ReseauxModal
-                  tenantId={t.id}
-                  tenantName={t.name}
-                  reseaux={t.reseaux.map(r => ({
-                    ...r,
-                    tauxCommission: Number(r.tauxCommission),
-                    tauxGateway:    Number(r.tauxGateway),
-                  }))}
-                />
+                <div className="flex gap-2">
+                  <ReseauxModal
+                    tenantId={t.id}
+                    tenantName={t.name}
+                    reseaux={t.reseaux.map(r => ({
+                      ...r,
+                      tauxCommission: Number(r.tauxCommission),
+                      tauxGateway:    Number(r.tauxGateway),
+                    }))}
+                  />
+                  <AbonnementModal
+                    tenantId={t.id}
+                    tenantName={t.name}
+                    montant={t.abonnement ? Number(t.abonnement.montant) : null}
+                    jourPrelevement={t.abonnement?.jourPrelevement ?? 1}
+                    paiements={(t.abonnement?.paiements ?? []).map(p => ({
+                      id:          p.id,
+                      mois:        p.mois,
+                      montant:     Number(p.montant),
+                      dateLimite:  p.dateLimite.toISOString(),
+                      statut:      p.statut as 'EN_ATTENTE' | 'PAYE' | 'EN_RETARD',
+                      datePaiement: p.datePaiement?.toISOString() ?? null,
+                      note:        p.note,
+                    }))}
+                  />
+                </div>
               </div>
             </div>
           </Card>

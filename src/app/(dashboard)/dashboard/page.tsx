@@ -176,7 +176,7 @@ export default async function DashboardPage() {
                 {evBadge(evJ)}
               </div>
             </div>
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-orange-500 bg-orange-50">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-orange-500 bg-orange-50">
               <Wallet size={17} strokeWidth={1.75}/>
             </div>
           </div>
@@ -193,7 +193,7 @@ export default async function DashboardPage() {
                 {evBadge(evMois)}
               </div>
             </div>
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-emerald-500 bg-emerald-50">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-emerald-500 bg-emerald-50">
               <TrendingUp size={17} strokeWidth={1.75}/>
             </div>
           </div>
@@ -211,7 +211,7 @@ export default async function DashboardPage() {
                 {agentsSansSaisie.length === 0 ? 'agents ont soumis' : `sur ${agentsActifs} agents actifs`}
               </p>
             </div>
-            <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${agentsSansSaisie.length > 0 ? 'text-red-500 bg-red-50' : 'text-emerald-500 bg-emerald-50'}`}>
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${agentsSansSaisie.length > 0 ? 'text-red-500 bg-red-50' : 'text-emerald-500 bg-emerald-50'}`}>
               {agentsSansSaisie.length > 0 ? <UserX size={17} strokeWidth={1.75}/> : <CheckCircle2 size={17} strokeWidth={1.75}/>}
             </div>
           </div>
@@ -229,7 +229,7 @@ export default async function DashboardPage() {
                 {alertes.length > 0 ? `${alertes.length} alerte(s) seuil` : 'Saisies en attente'}
               </p>
             </div>
-            <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${nonValides > 0 ? 'text-amber-500 bg-amber-50' : 'text-gray-400 bg-gray-50'}`}>
+            <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${nonValides > 0 ? 'text-amber-500 bg-amber-50' : 'text-gray-400 bg-gray-50'}`}>
               <Clock size={17} strokeWidth={1.75}/>
             </div>
           </div>
@@ -264,7 +264,7 @@ export default async function DashboardPage() {
           <div className="space-y-2">
             {alertes.map((a, i) => (
               <div key={i} className={`flex items-center gap-3 rounded-xl p-3 ${a.type === 'critical' ? 'bg-red-50 border border-red-100' : 'bg-amber-50 border border-amber-100'}`}>
-                <span className={`h-2 w-2 rounded-full flex-shrink-0 ${a.type === 'critical' ? 'bg-red-500' : 'bg-amber-500'}`}/>
+                <span className={`h-2 w-2 rounded-full shrink-0 ${a.type === 'critical' ? 'bg-red-500' : 'bg-amber-500'}`}/>
                 <p className="flex-1 text-sm">
                   <span className="font-medium">{a.reseau}</span>
                   {' — '}{a.type === 'critical'
@@ -336,7 +336,7 @@ export default async function DashboardPage() {
                   <p className="text-sm font-medium text-gray-900 truncate">{s.agent?.name ?? s.user?.name}</p>
                   <p className="text-xs text-gray-400">{s.agent?.code ?? 'Resp.'} · {fmtDateTime(s.createdAt)}</p>
                 </div>
-                <div className="text-right flex-shrink-0">
+                <div className="text-right shrink-0">
                   <p className="font-mono text-sm font-semibold text-gray-900">{fmtN(Number(s.totalGlobal))} F</p>
                   <Badge variant={s.statut === 'VALIDE' ? 'ok' : s.statut === 'SOUMIS' ? 'info' : 'error'}>
                     {s.statut === 'VALIDE' ? 'Validé' : s.statut === 'SOUMIS' ? 'Soumis' : 'Écart'}

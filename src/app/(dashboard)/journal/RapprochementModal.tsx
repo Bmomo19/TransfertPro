@@ -65,7 +65,7 @@ export function RapprochementModal({ saisieId, totalGlobal, agentName, details, 
     <>
       <button
         onClick={() => setOpen(true)}
-        className="rounded-lg bg-[var(--tenant-primary)] px-3 py-1.5 text-xs font-semibold text-white transition-all active:scale-95 hover:opacity-90">
+        className="rounded-lg bg-(--tenant-primary) px-3 py-1.5 text-xs font-semibold text-white transition-all active:scale-95 hover:opacity-90">
         Rapprocher
       </button>
 
