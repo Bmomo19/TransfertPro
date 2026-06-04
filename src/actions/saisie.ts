@@ -160,6 +160,7 @@ export async function rapprocher(
   saisieId: string,
   montantAttendu: number,
   note?: string,
+  commissionsResp?: Record<string, number>, // reseauId → valeurSaisie
 ): Promise<ActionResult<{ statut: 'VALIDE' | 'ALERTE_ECART' }>> {
   try {
     const session = await getServerSession(authOptions)
@@ -180,8 +181,24 @@ export async function rapprocher(
 
     await prisma.saisie.update({
       where: { id: saisieId },
-      data: { statut, validatedById: id, validatedAt: new Date(), montantAttendu, ecart },
+      data:  { statut, validatedById: id, validatedAt: new Date(), montantAttendu, ecart },
     })
+
+    // Enregistrer les commissions saisies par le responsable
+    if (commissionsResp && Object.keys(commissionsResp).length > 0) {
+      const reseauIds = Object.keys(commissionsResp).filter(k => (commissionsResp[k] ?? 0) > 0)
+      if (reseauIds.length > 0) {
+        const reseaux = await prisma.tenantReseau.findMany({
+          where:  { id: { in: reseauIds }, commissionParResp: true },
+          select: { id: true, nom: true, commissionLabel: true, modeCommission: true },
+        })
+        const commissionRows = await buildCommissionRows(tenantId!, saisie.date.toISOString().slice(0, 10), commissionsResp)
+        const rowsFiltered = commissionRows.filter(r => reseaux.some(res => res.id === r.reseauId))
+        if (rowsFiltered.length > 0) {
+          await prisma.saisieCommission.createMany({ data: rowsFiltered.map(r => ({ ...r, saisieId })) })
+        }
+      }
+    }
 
     await audit(
       { tenantId: tenantId!, actorType: 'USER', actorId: id, actorName: name, userId: id, ip, ua },

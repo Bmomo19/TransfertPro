@@ -93,9 +93,10 @@ model TenantReseau {
   isActive         Boolean        @default(true)
   ordre            Int            @default(0)
   // Commission agents
-  modeCommission   ModeCommission @default(DIRECT)
-  hasCommissionAgent Boolean      @default(false)
-  commissionLabel  String?        // label affiché dans le formulaire agent
+  modeCommission     ModeCommission @default(DIRECT)
+  hasCommissionAgent Boolean       @default(false)  // agent saisit dans sa saisie journalière
+  commissionParResp  Boolean       @default(false)  // responsable saisit pendant le rapprochement
+  commissionLabel    String?       // label affiché dans les formulaires
 
   saisieDetails      SaisieDetail[]
   thresholds         Threshold[]

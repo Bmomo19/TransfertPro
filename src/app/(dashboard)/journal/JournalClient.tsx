@@ -35,7 +35,9 @@ function StatutBadge({ statut }: { statut: Statut }) {
   return <Badge variant="error">Rejeté</Badge>
 }
 
-function SaisieModal({ s, onClose, canValidate }: { s: SaisieRow; onClose: () => void; canValidate: boolean }) {
+interface CommReseauResp2 { id: string; label: string; mode: 'DIRECT' | 'CUMULATIF' }
+
+function SaisieModal({ s, onClose, canValidate, commReseauxResp }: { s: SaisieRow; onClose: () => void; canValidate: boolean; commReseauxResp: CommReseauResp2[] }) {
   const hasEcart = s.statut === 'ALERTE_ECART'
 
   return (
@@ -146,6 +148,7 @@ function SaisieModal({ s, onClose, canValidate }: { s: SaisieRow; onClose: () =>
               caisse={s.caisse}
               especes={s.especes}
               transfertResp={s.transfertResp}
+              commReseauxResp={commReseauxResp}
             />
           )}
         </div>
@@ -154,12 +157,15 @@ function SaisieModal({ s, onClose, canValidate }: { s: SaisieRow; onClose: () =>
   )
 }
 
+interface CommReseauResp { id: string; label: string; mode: 'DIRECT' | 'CUMULATIF' }
+
 interface Props {
-  rows:        SaisieRow[]
-  canValidate: boolean
+  rows:             SaisieRow[]
+  canValidate:      boolean
+  commReseauxResp:  CommReseauResp[]
 }
 
-export function JournalClient({ rows, canValidate }: Props) {
+export function JournalClient({ rows, canValidate, commReseauxResp }: Props) {
   const [selected, setSelected] = useState<SaisieRow | null>(null)
 
   return (
@@ -218,7 +224,7 @@ export function JournalClient({ rows, canValidate }: Props) {
       </div>
 
       {selected && (
-        <SaisieModal s={selected} onClose={() => setSelected(null)} canValidate={canValidate}/>
+        <SaisieModal s={selected} onClose={() => setSelected(null)} canValidate={canValidate} commReseauxResp={commReseauxResp}/>
       )}
     </>
   )

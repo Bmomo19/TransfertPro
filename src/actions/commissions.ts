@@ -63,8 +63,9 @@ export async function enregistrerRetrait(
 }
 
 const ReseauCommissionSchema = z.object({
-  reseauId:          z.string().cuid(),
+  reseauId:          z.string().min(1),
   hasCommissionAgent: z.boolean(),
+  commissionParResp:  z.boolean().default(false),
   modeCommission:    z.enum(['DIRECT', 'CUMULATIF']),
   commissionLabel:   z.string().max(60).optional(),
 })
@@ -94,6 +95,7 @@ export async function updateReseauCommission(
       where: { id: d.reseauId },
       data: {
         hasCommissionAgent: d.hasCommissionAgent,
+        commissionParResp:  d.commissionParResp,
         modeCommission:     d.modeCommission,
         commissionLabel:    d.commissionLabel || null,
       },
@@ -101,6 +103,7 @@ export async function updateReseauCommission(
 
     revalidatePath('/settings')
     revalidatePath('/saisie')
+    revalidatePath('/journal')
     return { ok: true, data: undefined }
   } catch (err: any) {
     return { ok: false, error: err.message }

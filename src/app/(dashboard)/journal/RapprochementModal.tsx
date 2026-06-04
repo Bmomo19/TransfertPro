@@ -8,27 +8,33 @@ import { SEUIL_RAPPROCHEMENT } from '@/lib/constants'
 
 interface Detail { id: string; reseauNom: string; solde: number }
 
+interface CommReseauResp { id: string; label: string; mode: 'DIRECT' | 'CUMULATIF' }
+
 interface Props {
-  saisieId:      string
-  totalGlobal:   number
-  agentName:     string
-  details?:      Detail[]
-  caisse?:       number
-  especes?:      number
-  transfertResp?: number
+  saisieId:         string
+  totalGlobal:      number
+  agentName:        string
+  details?:         Detail[]
+  caisse?:          number
+  especes?:         number
+  transfertResp?:   number
+  commReseauxResp?: CommReseauResp[]
 }
 
 function parseNum(v: string) {
   return parseFloat(v.replace(/\s/g, '').replace(',', '.')) || 0
 }
 
-export function RapprochementModal({ saisieId, totalGlobal, agentName, details, caisse, especes, transfertResp }: Props) {
-  const [open,     setOpen]     = useState(false)
-  const [montant,  setMontant]  = useState('')
-  const [note,     setNote]     = useState('')
-  const [loading,  setLoading]  = useState(false)
-  const [result,   setResult]   = useState<'VALIDE' | 'ALERTE_ECART' | null>(null)
+export function RapprochementModal({ saisieId, totalGlobal, agentName, details, caisse, especes, transfertResp, commReseauxResp }: Props) {
+  const [open,       setOpen]       = useState(false)
+  const [montant,    setMontant]    = useState('')
+  const [note,       setNote]       = useState('')
+  const [loading,    setLoading]    = useState(false)
+  const [result,     setResult]     = useState<'VALIDE' | 'ALERTE_ECART' | null>(null)
   const [showDetail, setShowDetail] = useState(false)
+  const [comms,      setComms]      = useState<Record<string, string>>(() =>
+    Object.fromEntries((commReseauxResp ?? []).map(r => [r.id, '']))
+  )
 
   const montantNum  = parseNum(montant)
   const ecart       = montantNum > 0 ? Math.abs(totalGlobal - montantNum) : null
@@ -37,7 +43,15 @@ export function RapprochementModal({ saisieId, totalGlobal, agentName, details, 
   async function confirm() {
     if (!montantNum) return
     setLoading(true)
-    const res = await rapprocher(saisieId, montantNum, note || undefined)
+    const commissionsNum: Record<string, number> = {}
+    for (const [id, val] of Object.entries(comms)) {
+      const n = parseNum(val)
+      if (n > 0) commissionsNum[id] = n
+    }
+    const res = await rapprocher(
+      saisieId, montantNum, note || undefined,
+      Object.keys(commissionsNum).length > 0 ? commissionsNum : undefined,
+    )
     setLoading(false)
     if (!res.ok) { toast.error(res.error); return }
     setResult(res.data.statut)
@@ -180,6 +194,44 @@ export function RapprochementModal({ saisieId, totalGlobal, agentName, details, 
                   <span className={`text-xs font-semibold ${alerteEcart ? 'text-orange-600' : 'text-emerald-600'}`}>
                     {alerteEcart ? `> seuil ${fmtN(SEUIL_RAPPROCHEMENT)} F` : 'OK'}
                   </span>
+                </div>
+              )}
+
+              {/* Commissions responsable */}
+              {commReseauxResp && commReseauxResp.length > 0 && (
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold uppercase tracking-widest text-gray-400">
+                    Commissions structure
+                  </label>
+                  {commReseauxResp.map(r => {
+                    const val     = comms[r.id] ?? ''
+                    const valNum  = parseNum(val)
+                    return (
+                      <div key={r.id} className="rounded-xl border border-blue-100 bg-blue-50/40 overflow-hidden">
+                        {r.mode === 'CUMULATIF' && (
+                          <div className="flex items-center gap-1.5 border-b border-blue-100/60 px-4 py-1.5">
+                            <span className="text-[10px] font-semibold uppercase tracking-widest text-blue-500">Cumulatif — lecture compteur</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-3 px-4 py-3">
+                          <span className="flex-1 text-sm font-medium text-gray-700">{r.label}</span>
+                          <input
+                            type="text" inputMode="numeric"
+                            value={val}
+                            onChange={e => setComms(c => ({ ...c, [r.id]: e.target.value.replace(/[^\d ,.]/g, '') }))}
+                            placeholder="0"
+                            className="w-28 text-right font-mono text-sm font-semibold text-gray-900 outline-none bg-transparent placeholder:text-gray-300"/>
+                          <span className="text-xs text-gray-400 shrink-0">FCFA</span>
+                        </div>
+                        {r.mode === 'CUMULATIF' && valNum > 0 && (
+                          <div className="border-t border-blue-100/60 px-4 py-1.5 flex items-center justify-between">
+                            <span className="text-[11px] text-blue-500">Commission du jour (delta)</span>
+                            <span className="font-mono text-xs font-bold text-blue-700">calculé auto</span>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
 

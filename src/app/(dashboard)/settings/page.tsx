@@ -53,6 +53,7 @@ export default async function SettingsPage() {
             id:                r.id,
             nom:               r.nom,
             hasCommissionAgent: r.hasCommissionAgent,
+            commissionParResp:  r.commissionParResp,
             modeCommission:    r.modeCommission as 'DIRECT' | 'CUMULATIF',
             commissionLabel:   r.commissionLabel,
           }))}

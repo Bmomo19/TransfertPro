@@ -20,7 +20,7 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
 
   const where = { tenantId, ...(statut ? { statut: statut as SaisieStatut } : {}) }
 
-  const [saisies, total] = await Promise.all([
+  const [saisies, total, commReseauxResp] = await Promise.all([
     prisma.saisie.findMany({
       where, orderBy: { date: 'desc' }, skip: (page - 1) * PER, take: PER,
       include: {
@@ -31,6 +31,11 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
       },
     }),
     prisma.saisie.count({ where }),
+    prisma.tenantReseau.findMany({
+      where:  { tenantId, commissionParResp: true, isActive: true },
+      select: { id: true, nom: true, commissionLabel: true, modeCommission: true },
+      orderBy: { ordre: 'asc' },
+    }),
   ])
 
   const canValidate = ['RESPONSABLE', 'SUPER_ADMIN'].includes(session.user.role)
@@ -97,7 +102,15 @@ export default async function JournalPage({ searchParams }: { searchParams: Prom
         </div>
       </div>
 
-      <JournalClient rows={rows} canValidate={canValidate}/>
+      <JournalClient
+        rows={rows}
+        canValidate={canValidate}
+        commReseauxResp={commReseauxResp.map(r => ({
+          id:    r.id,
+          label: r.commissionLabel ?? r.nom,
+          mode:  r.modeCommission as 'DIRECT' | 'CUMULATIF',
+        }))}
+      />
 
       <Pagination page={page} total={total} perPage={PER}/>
     </div>
