@@ -10,7 +10,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { VolumeChart } from './VolumeChart'
 import {
   Wallet, Users, TrendingUp, AlertTriangle,
-  Clock, UserX, TrendingDown, CheckCircle2,
+  Clock, UserX, TrendingDown, CheckCircle2, ChevronRight,
 } from 'lucide-react'
 
 export default async function DashboardPage() {
@@ -40,6 +40,7 @@ export default async function DashboardPage() {
     agentsSansSaisie,
     saisies7j,
     topAgentsSaisies,
+    agentsVue,
   ] = await Promise.all([
     // Saisies d'aujourd'hui avec détails
     prisma.saisie.findMany({
@@ -89,6 +90,19 @@ export default async function DashboardPage() {
     prisma.saisie.findMany({
       where:   { tenantId, agentId: { not: null }, date: { gte: moisDebut } },
       select:  { agentId: true, totalGlobal: true, agent: { select: { name: true, code: true } } },
+    }),
+    // Vue agents : solde dernier + volume mois
+    prisma.agent.findMany({
+      where:   { tenantId, isActive: true },
+      select: {
+        id: true, name: true, code: true,
+        saisies: {
+          where:   { date: { gte: moisDebut } },
+          orderBy: { date: 'desc' },
+          select:  { totalGlobal: true, statut: true, date: true },
+        },
+      },
+      orderBy: { name: 'asc' },
     }),
   ])
 
@@ -142,6 +156,18 @@ export default async function DashboardPage() {
   }
   const topAgents = Array.from(agentMap.values()).sort((a, b) => b.volume - a.volume).slice(0, 5)
   const maxVol = topAgents[0]?.volume ?? 1
+
+  // Vue agents : solde actuel + volume mois
+  const agentsVueData = agentsVue.map(a => ({
+    id:           a.id,
+    name:         a.name,
+    code:         a.code,
+    dernierSolde: a.saisies[0] ? Number(a.saisies[0].totalGlobal) : null,
+    dernierStatut: a.saisies[0]?.statut ?? null,
+    dernierDate:  a.saisies[0]?.date?.toISOString().slice(0, 10) ?? null,
+    volumeMois:   a.saisies.reduce((s, x) => s + Number(x.totalGlobal), 0),
+    nbSaisies:    a.saisies.length,
+  })).sort((a, b) => b.volumeMois - a.volumeMois)
 
   function evBadge(ev: number | null) {
     if (ev === null) return null
@@ -319,6 +345,92 @@ export default async function DashboardPage() {
           )}
         </Card>
       </div>
+
+      {/* ── Vue agents : solde + volume mois ── */}
+      <Card>
+        <h2 className="mb-4 font-display text-sm font-semibold text-gray-900 flex items-center gap-2">
+          <Users size={14} className="text-gray-400"/>
+          Agents — solde & volume {new Date().toLocaleDateString('fr-FR', { month: 'long' })}
+        </h2>
+        {agentsVueData.length === 0 ? (
+          <p className="py-6 text-center text-sm text-gray-400">Aucun agent actif</p>
+        ) : (
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100">
+                  {['Agent', 'Dernier solde', 'Statut', 'Volume du mois', 'Saisies'].map(h => (
+                    <th key={h} className="px-3 pb-2 text-left text-[11px] font-medium uppercase tracking-wide text-gray-400 first:pl-1">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {agentsVueData.map(a => {
+                  const statut = a.dernierStatut
+                  return (
+                    <tr key={a.id} className="group hover:bg-gray-50/60 transition-colors">
+                      {/* Agent */}
+                      <td className="px-3 py-2.5 first:pl-1">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-100 text-[11px] font-bold text-gray-500 uppercase">
+                            {a.name.slice(0, 2)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-gray-900 truncate max-w-[120px]">{a.name}</p>
+                            <p className="font-mono text-[11px] text-gray-400">{a.code}</p>
+                          </div>
+                        </div>
+                      </td>
+                      {/* Dernier solde */}
+                      <td className="px-3 py-2.5">
+                        {a.dernierSolde != null ? (
+                          <span className="font-mono text-sm font-semibold text-gray-900">{fmtN(a.dernierSolde)} F</span>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                        {a.dernierDate && (
+                          <p className="text-[11px] text-gray-400">{new Date(a.dernierDate).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</p>
+                        )}
+                      </td>
+                      {/* Statut dernière saisie */}
+                      <td className="px-3 py-2.5">
+                        {statut === 'VALIDE'       && <span className="inline-flex items-center rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Validé</span>}
+                        {statut === 'SOUMIS'       && <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700">Soumis</span>}
+                        {statut === 'ALERTE_ECART' && <span className="inline-flex items-center rounded-full bg-orange-50 px-2 py-0.5 text-[11px] font-semibold text-orange-700">Écart</span>}
+                        {statut === 'REJETE'       && <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">Rejeté</span>}
+                        {!statut                   && <span className="text-xs text-gray-300">—</span>}
+                      </td>
+                      {/* Volume mois */}
+                      <td className="px-3 py-2.5">
+                        <div className="space-y-1">
+                          <span className="font-mono text-sm font-semibold text-gray-900">{fmtN(a.volumeMois)} F</span>
+                          {agentsVueData[0]?.volumeMois > 0 && (
+                            <div className="h-1 w-24 rounded-full bg-gray-100">
+                              <div
+                                className="h-1 rounded-full"
+                                style={{
+                                  width: `${Math.round((a.volumeMois / (agentsVueData[0]?.volumeMois ?? 1)) * 100)}%`,
+                                  background: 'var(--tenant-primary, #F97316)',
+                                }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      {/* Nb saisies */}
+                      <td className="px-3 py-2.5">
+                        <a href={`/agents/${a.id}`} className="flex items-center gap-1 text-xs font-medium text-gray-400 group-hover:text-gray-700 transition-colors">
+                          {a.nbSaisies} <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 transition-opacity"/>
+                        </a>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
 
       {/* ── Saisies du jour ── */}
       <Card>
